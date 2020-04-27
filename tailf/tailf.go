@@ -1,17 +1,12 @@
 package tailf
 
 import (
-	"fmt"
 	"github.com/hpcloud/tail"
-	"time"
 )
 
-func Init() {
+var tailObj *tail.Tail
 
-}
-
-func run() {
-	fileName := "./my.log"
+func Init(fileName string) (err error) {
 	config := tail.Config{
 		ReOpen:    true,
 		Follow:    true,
@@ -19,23 +14,10 @@ func run() {
 		MustExist: false,
 		Poll:      true,
 	}
-	tails, err := tail.TailFile(fileName, config)
-	if err != nil {
-		fmt.Println("tail file error:", err)
-		return
-	}
-	var (
-		msg *tail.Line
-		ok  bool
-	)
-	for {
-		msg, ok = <-tails.Lines
-		if !ok {
-			fmt.Printf("tail file close reopen,filename:%s\n", tails.Filename)
-			time.Sleep(time.Second)
-			continue
-		}
-		fmt.Println("line:", msg.Text)
-	}
+	tailObj, err = tail.TailFile(fileName, config)
+	return err
+}
 
+func ReadLog() <-chan *tail.Line{
+	return tailObj.Lines
 }

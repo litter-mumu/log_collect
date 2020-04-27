@@ -2,30 +2,33 @@ package main
 
 import (
 	"fmt"
-	"github.com/Shopify/sarama"
+	"hello_kafka_tailf/kafka"
+	"hello_kafka_tailf/tailf"
+	"time"
 )
 
-func main() {
-	config := sarama.NewConfig()
-	config.Producer.RequiredAcks = sarama.WaitForAll
-	config.Producer.Partitioner = sarama.NewRandomPartitioner //新选出一个partition
-	config.Producer.Return.Successes = true                   // 成功交付的消息将在success channel返回
-	//构造一个消息
-	msg := &sarama.ProducerMessage{}
-	msg.Topic = "web_log"
-	msg.Value = sarama.StringEncoder("this is test log")
-	//连接kafka
-	client, err := sarama.NewSyncProducer([]string{"127.0.0.1:9092"}, config)
-	if err != nil {
-		fmt.Println("producer closed,err:", err)
+func run() {
+	for {
+		select {
+		case line := <-tailf.ReadLog():
+			kafka.SendToKafka("web_log", line.Text)
+			break
+		default:
+			time.Sleep(time.Second)
+		}
 	}
-	defer client.Close()
-	//发送消息
-	pid, offset, err := client.SendMessage(msg)
+}
+
+func main() {
+	err := kafka.Init([]string{"127.0.0.1:9092"})
 	if err != nil {
-		fmt.Println("send message err:", err)
 		return
 	}
-	fmt.Printf("pid:%v offset:%v", pid, offset)
-
+	fmt.Println("kafka init success")
+	err = tailf.Init("./my.log")
+	if err != nil {
+		return
+	}
+	fmt.Println("kafka init success")
+	run()
 }
